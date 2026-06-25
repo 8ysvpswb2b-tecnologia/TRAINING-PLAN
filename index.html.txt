@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training Log">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#08090d">
+<title>Training Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#08090d;overflow-x:hidden;overscroll-behavior:none}
+::-webkit-scrollbar{display:none}
+#root{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+input,textarea,select{-webkit-appearance:none;border-radius:0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback,useMemo,useRef}=React;
+const{LineChart,Line,BarChart,Bar,AreaChart,Area,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid}=Recharts;
+
+// ─── DESIGN SYSTEM ─────────────────────────────────────────
+const C={bg:"#08090d",s1:"#0f1118",s2:"#181d29",s3:"#1f2535",border:"#262c3d",borderFaint:"#1a1f2e",text:"#f0f4ff",muted:"#8892aa",dim:"#3d4663",orange:"#ff6200",orangeL:"#ff9500",cyan:"#00cfff",cyanD:"#0099cc",green:"#00e87a",greenD:"#00a856",purple:"#a855f7",purpleL:"#c084fc",blue:"#3b9eff",red:"#ff3d5a",yellow:"#ffd000"};
+const grad={orange:"linear-gradient(135deg,#ff6200,#ff9500)",cyan:"linear-gradient(135deg,#0099cc,#00cfff)",green:"linear-gradient(135deg,#00a856,#00e87a)",purple:"linear-gradient(135deg,#7c3aed,#a855f7)",hero:"linear-gradient(135deg,#0f1118 0%,#0c0f00 50%,#08090d 100%)"};
+const ST={upper:{label:"Upper Body",color:C.orange,g:grad.orange,icon:"💪"},lower:{label:"Lower Body",color:C.orange,g:grad.orange,icon:"🏋️"},corsa:{label:"Corsa",color:C.blue,g:grad.cyan,icon:"🏃"},salita:{label:"Salita",color:C.purple,g:grad.purple,icon:"⛰️"},riposo:{label:"Riposo",color:C.green,g:grad.green,icon:"😴"},gara:{label:"Gara",color:C.purple,g:grad.purple,icon:"🏆"},calcetto:{label:"Calcetto",color:C.yellow,g:"linear-gradient(135deg,#b88000,#ffd000)",icon:"⚽"},padel:{label:"Padel",color:C.cyan,g:grad.cyan,icon:"🎾"},tennis:{label:"Tennis",color:C.cyan,g:grad.cyan,icon:"🎾"},libero:{label:"Libero",color:C.muted,g:"linear-gradient(135deg,#3d4663,#8892aa)",icon:"📝"}};
+const WELLNESS=[{val:1,emoji:"😴",label:"Distrutto"},{val:2,emoji:"😔",label:"Stanco"},{val:3,emoji:"😐",label:"Nella media"},{val:4,emoji:"⚡",label:"Energico"},{val:5,emoji:"🔥",label:"In forma!"}];
+const SYMS=[{id:"ginocchio",icon:"🦵",label:"Ginocchio"},{id:"plantare",icon:"🦶",label:"Plantare"},{id:"gambe_p",icon:"💢",label:"Gambe pesanti"},{id:"schiena",icon:"🔙",label:"Schiena"},{id:"ok",icon:"✨",label:"Tutto ok"}];
+const ESD=[{id:"trazioni",nome:"Trazioni",cat:"upper",hw:true},{id:"spinta_inc",nome:"Spinta Panca Inclinata",cat:"upper",hw:true},{id:"mil_press",nome:"Military Press Seduto",cat:"upper",hw:true},{id:"csr",nome:"Chest Supported Row",cat:"upper",hw:true},{id:"curl",nome:"Curl Hammer",cat:"upper",hw:true},{id:"face_pull",nome:"Face Pull Elastico",cat:"upper",hw:false},{id:"lat_raise",nome:"Lateral Raise",cat:"upper",hw:true},{id:"bulgaro",nome:"Squat Bulgaro",cat:"lower",hw:true},{id:"affondi",nome:"Affondi Camminati",cat:"lower",hw:true},{id:"hip_thrust",nome:"Hip Thrust",cat:"lower",hw:true},{id:"step_up",nome:"Step-up Panca",cat:"lower",hw:true},{id:"nordic",nome:"Nordic Curl",cat:"lower",hw:false},{id:"rdl",nome:"Romanian Deadlift",cat:"lower",hw:true},{id:"calf",nome:"Calf Raise Eccentrico",cat:"lower",hw:true},{id:"squat_j",nome:"Squat Jump",cat:"lower",hw:true},{id:"balzi",nome:"Balzi Monopodalici",cat:"lower",hw:false},{id:"box_j",nome:"Box Jump",cat:"lower",hw:false},{id:"plank",nome:"Plank",cat:"core",hw:false,dur:true},{id:"dead_bug",nome:"Dead Bug",cat:"core",hw:false},{id:"corda",nome:"Corda Veloce",cat:"core",hw:false,dur:true}];
+const GIORNI=["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+const MESI=["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+const dKey=d=>d.toISOString().split("T")[0];
+const today=()=>new Date();
+const uid=()=>Math.random().toString(36).slice(2,9);
+const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
+const sow=d=>{const s=new Date(d);s.setDate(d.getDate()+(d.getDay()===0?-6:1-d.getDay()));s.setHours(0,0,0,0);return s;};
+
+function parseGPX(txt){
+  try{
+    const xml=new DOMParser().parseFromString(txt,"text/xml");
+    let pts=[...xml.querySelectorAll("trkpt")];
+    if(!pts.length)pts=[...xml.querySelectorAll("rtept")];
+    if(!pts.length)return null;
+    const cs=pts.map(p=>({lat:+p.getAttribute("lat
